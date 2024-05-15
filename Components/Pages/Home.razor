@@ -1,7 +1,67 @@
 ﻿@page "/"
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<h1>Pomodoro timer</h1>
 
-<h1>Hello, world!</h1>
+<div class="timer">
+    <span>@DisplayMinutes</span>:<span>@DisplaySeconds</span>
+</div>
 
-Welcome to your new app.
+<div class="controls">
+    <button @onclick="StartTimer" disabled="@IsTimerRunning">Start</button>
+    <button @onclick="ResetTimer">Reset</button>
+</div>
+
+@code {
+    private int Minutes = 1;
+    private int Seconds = 0;
+    private bool IsTimerRunning = false;
+    private System.Timers.Timer Timer;
+
+    private string DisplayMinutes => Minutes.ToString("D2");
+    private string DisplaySeconds => Seconds.ToString("D2");
+
+    protected override void OnInitialized()
+    {
+        Timer = new System.Timers.Timer(1000);
+        Timer.Elapsed += TimerElapsed;
+    }
+
+    private void TimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (Seconds == 0)
+        {
+            if (Minutes == 0)
+            {
+                Timer.Stop();
+                IsTimerRunning = false;
+            }
+            else
+            {
+                Minutes--;
+                Seconds = 59;
+            }
+        }
+        else
+        {
+            Seconds--;
+        }
+        InvokeAsync(StateHasChanged); // Notify Blazor to refresh UI
+    }
+
+    private async Task StartTimer()
+    {
+        IsTimerRunning = true;
+        Timer.Start();
+        await InvokeAsync(StateHasChanged); // Notify Blazor to refresh UI
+    }
+
+    private async Task ResetTimer()
+    {
+        Timer.Stop();
+        IsTimerRunning = false;
+        Minutes = 25;
+        Seconds = 0;
+        await InvokeAsync(StateHasChanged); // Notify Blazor to refresh UI
+    }
+}
