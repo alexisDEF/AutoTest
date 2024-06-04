@@ -1,152 +1,68 @@
 ﻿@page "/"
-@using System.Text.Json
+@using AutoTest.Model
 @rendermode InteractiveServer
 
-<h1>Pomodoro Timer</h1>
+<h1 id="titrePage">Pomodoro Timer</h1>
 
 <div class="timer">
     <span>@DisplayMinutes</span>:<span>@DisplaySeconds</span>
 </div>
 
 <div class="session-info">
-    <span>@SessionType</span>
+    <span id="currentSession">@SessionType</span>
 </div>
 
 <div class="controls">
     <div>
         <label>Travail (minutes):</label>
-        <input type="number" min="1" max="60" @bind="WorkDuration" @oninput="UpdateDisplay" />
+        <input id="tpsTravail" type="number" min="1" max="60" @bind="pomodoroTimer.WorkDuration" @oninput="UpdateWorkDuration" />
     </div>
     <div>
         <label>Pause (minutes):</label>
-        <input type="number" min="1" max="60" @bind="BreakDuration" />
+        <input id="tpsPause" type="number" min="1" max="60" @bind="pomodoroTimer.BreakDuration" @oninput="UpdateBreakDuration" />
     </div>
-    <button @onclick="StartTimer" disabled="@IsTimerRunning">Start</button>
-    <button @onclick="ResetTimer">Reset</button>
+    <button id="startBtn" @onclick="StartTimer" disabled="@pomodoroTimer.IsTimerRunning">Start</button>
+    <button id="endBtn" @onclick="ResetTimer">Reset</button>
 </div>
 
 <div>
     <label>Nombre de sessions de travail:</label>
-    <span>@SessionCount</span>
+    <span id="nbSessions">@pomodoroTimer.SessionCount</span>
 </div>
 
 @code {
-    private int WorkDuration = 25;
-    private int BreakDuration = 5;
-    private int Minutes;
-    private int Seconds;
-    private bool IsTimerRunning = false;
-    private bool IsWorkSession = true; // True for work session, false for break session
-    private System.Timers.Timer Timer;
-    private int SessionCount = 0;
+    private PomodoroTimer pomodoroTimer = new PomodoroTimer();
 
-    private string DisplayMinutes => Minutes.ToString("D2");
-    private string DisplaySeconds => Seconds.ToString("D2");
-    private string SessionType => IsWorkSession ? "Session de travail" : "Pause";
-
-    protected override void OnInitialized()
-    {
-        ResetTimer();
-    }
-
-    private void TimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
-    {
-        if (Seconds == 0)
-        {
-            if (Minutes == 0)
-            {
-                Timer.Stop();
-                IsTimerRunning = false;
-                if (IsWorkSession)
-                {
-                    IsWorkSession = false;
-                    SessionCount++;
-                    Minutes = BreakDuration;
-                }
-                else
-                {
-                    IsWorkSession = true;
-                    Minutes = WorkDuration;
-                }
-                Seconds = 0;
-            }
-            else
-            {
-                Minutes--;
-                Seconds = 59;
-            }
-        }
-        else
-        {
-            Seconds--;
-        }
-        InvokeAsync(StateHasChanged); // Notify Blazor to refresh UI
-    }
+    private string DisplayMinutes => pomodoroTimer.Minutes.ToString("D2");
+    private string DisplaySeconds => pomodoroTimer.Seconds.ToString("D2");
+    private string SessionType => pomodoroTimer.IsWorkSession ? "Session de travail" : "Pause";
 
     private async Task StartTimer()
     {
-        IsTimerRunning = true;
-        Timer.Start();
-        await InvokeAsync(StateHasChanged); // Notify Blazor to refresh UI
+        await pomodoroTimer.StartTimer();
     }
 
     private async Task ResetTimer()
     {
-        Timer?.Stop();
-        IsTimerRunning = false;
-        IsWorkSession = true;
-        Minutes = WorkDuration;
-        Seconds = 0;
-        Timer = new System.Timers.Timer(1000);
-        Timer.Elapsed += TimerElapsed;
-        await InvokeAsync(StateHasChanged); // Notify Blazor to refresh UI
+        await pomodoroTimer.ResetTimer();
     }
 
-    private void UpdateDisplay(ChangeEventArgs e)
+    private void UpdateWorkDuration(ChangeEventArgs e)
     {
-        Minutes = Convert.ToInt32(e.Value);
-    }
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
+        int newValue;
+        if (int.TryParse(e.Value.ToString(), out newValue))
         {
-            // Écrire les données dans un fichier lorsque l'application est rendue pour la première fois
-            await WriteToFile();
+            pomodoroTimer.UpdateWorkDuration(newValue);
         }
     }
 
-    private async Task WriteToFile()
+    private void UpdateBreakDuration(ChangeEventArgs e)
     {
-        try
+        int newValue;
+        if (int.TryParse(e.Value.ToString(), out newValue))
         {
-            string filePath = "pomodoro_data.json";
-
-            // Créer un objet pour les données à sauvegarder
-            var pomodoroData = new PomodoroData
-                {
-                    SessionCount = SessionCount,
-                    WorkDuration = WorkDuration,
-                    BreakDuration = BreakDuration
-                };
-
-            // Sérialiser l'objet en JSON
-            string jsonData = JsonSerializer.Serialize(pomodoroData);
-
-            // Écrire le JSON dans le fichier
-            await File.WriteAllTextAsync(filePath, jsonData);
+            pomodoroTimer.UpdateBreakDuration(newValue);
         }
-        catch (Exception ex)
-        {
-            // Gérer les erreurs
-            Console.WriteLine($"Erreur lors de l'écriture dans le fichier : {ex.Message}");
-        }
-    }
-
-    public class PomodoroData
-    {
-        public int SessionCount { get; set; }
-        public int WorkDuration { get; set; }
-        public int BreakDuration { get; set; }
     }
 }
 
